@@ -1,130 +1,266 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>社區端系統架構 - CRUD 互動示範</title>
-<style>
-body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; }
-header { background-color: #005eb8; color: white; padding: 10px; text-align: center; }
-nav { display: flex; justify-content: center; background-color: #e0e0e0; }
-nav button { margin: 5px; padding: 10px 20px; border: none; cursor: pointer; background-color: #ddd; border-radius: 5px; }
-nav button.active { background-color: #005eb8; color: white; }
-.container { padding: 20px; }
-input, select { margin: 5px; padding: 5px; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-button { border-radius: 4px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>社區端 FHIR CRUD 範例</title>
+  <style>
+    body{font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans TC', 'Helvetica Neue', Arial; padding:16px; background:#f7fbff}
+    .container{max-width:980px;margin:0 auto;background:white;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(8,40,60,0.06)}
+    h1{font-size:20px;margin-bottom:6px}
+    label{display:block;margin-top:10px;font-weight:600}
+    input,textarea,select{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:1px solid #d8e6f2}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    .small{font-size:13px;color:#666}
+    pre{background:#0f1724;color:#e6f0ff;padding:12px;border-radius:6px;overflow:auto;max-height:360px}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .btn-primary{background:#0b76d1;color:white}
+    .btn-ghost{background:#eef6ff;color:#0b76d1;border:1px solid #d3eafc}
+    .btn-danger{background:#e14c4c;color:white}
+    .space-top{margin-top:12px}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:16px}
+    .hint{font-size:13px;color:#4b5563}
+  </style>
 </head>
 <body>
-<header>
-  <h1>社區端系統架構 - CRUD 互動示範</h1>
-</header>
-<nav>
-  <button id="tabCitizen" class="active">民眾服務請求系統</button>
-  <button id="tabVolunteer">志工管理系統</button>
-  <button id="tabAdmin">社區管理系統</button>
-</nav>
-<div class="container">
-  <div id="formArea">
-    <h2 id="formTitle">新增資料</h2>
-    <input type="hidden" id="editIndex">
-    <input id="name" placeholder="姓名">
-    <input id="service" placeholder="服務項目">
-    <select id="status">
-      <option value="active">active</option>
-      <option value="completed">completed</option>
-    </select>
-    <button onclick="addOrUpdate()">儲存</button>
-    <button onclick="resetForm()">清除</button>
-    <button onclick="exportCSV()">匯出 CSV</button>
+  <div class="container">
+    <h1>社區端 FHIR CRUD 範例（Organization / PractitionerRole / Patient）</h1>
+    <p class="small">輸入資料 → 按 <strong>產生 FHIR JSON</strong> → 可用 CRUD 按鈕呼叫你的 FHIR 伺服器（Base URL）。程式為教學用途，請依實際伺服器驗證／授權配置調整。</p>
+
+    <div class="grid">
+      <div>
+        <h2>伺服器設定</h2>
+        <label>FHIR Server Base URL</label>
+        <input id="fhirBase" placeholder="https://your-fhir-server/fhir" />
+        <label class="space-top">Authorization (Bearer token，可空)</label>
+        <input id="authToken" placeholder="Bearer token" />
+
+        <hr class="space-top" />
+
+        <h2>社區總站（Organization）</h2>
+        <label>組織 ID（id）</label>
+        <input id="org_id" placeholder="community-center" />
+        <label>名稱（name）</label>
+        <input id="org_name" placeholder="社區健康中心" />
+        <label>電話（telecom）</label>
+        <input id="org_phone" placeholder="02-1234-5678" />
+        <label>地址（address）</label>
+        <input id="org_address" placeholder="臺北市社區路1號" />
+
+        <h2 class="space-top">分站 / 協作單位（Organization）</h2>
+        <label>分站 ID</label>
+        <input id="sub_id" placeholder="station1" />
+        <label>分站名稱</label>
+        <input id="sub_name" placeholder="第一社區分站" />
+
+        <hr class="space-top" />
+        <h2>Practitioner / PractitionerRole</h2>
+        <label>從業者 ID（Practitioner id）</label>
+        <input id="pract_id" placeholder="manager001" />
+        <label>從業者姓名（display / text）</label>
+        <input id="pract_name" placeholder="王小明" />
+        <label>角色 ID（PractitionerRole id）</label>
+        <input id="role_id" placeholder="manager-station1" />
+
+        <hr class="space-top" />
+        <h2>居民 / Patient</h2>
+        <label>病人 ID（Patient id）</label>
+        <input id="patient_id" placeholder="resident001" />
+        <label>姓名（text）</label>
+        <input id="patient_name" placeholder="陳阿姨" />
+        <label>電話（telecom）</label>
+        <input id="patient_phone" placeholder="0912-345-678" />
+        <label>出生日期（YYYY-MM-DD）</label>
+        <input id="patient_birth" placeholder="1960-05-20" />
+
+        <div class="space-top">
+          <button class="btn btn-primary" id="genJson">產生 FHIR JSON</button>
+          <button class="btn btn-ghost" id="clearAll">清除欄位</button>
+        </div>
+
+        <p class="hint space-top">注：此範例產生的 JSON 以最常用欄位為主，實務上依照伺服器與情境補齊必要欄位與驗證。</p>
+      </div>
+
+      <div>
+        <h2>輸出 / CRUD 操作</h2>
+        <label>選擇要操作的資源類型</label>
+        <select id="resourceType">
+          <option value="Organization">Organization</option>
+          <option value="Practitioner">Practitioner</option>
+          <option value="PractitionerRole">PractitionerRole</option>
+          <option value="Patient">Patient</option>
+        </select>
+
+        <label class="space-top">指定 Resource ID（GET / PUT / DELETE 使用）</label>
+        <input id="target_id" placeholder="輸入 resource id" />
+
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="createBtn">Create (POST)</button>
+          <button class="btn btn-ghost" id="readBtn">Read (GET)</button>
+          <button class="btn btn-ghost" id="updateBtn">Update (PUT)</button>
+          <button class="btn btn-danger" id="deleteBtn">Delete (DELETE)</button>
+        </div>
+
+        <div class="space-top">
+          <label>產生的 FHIR JSON</label>
+          <pre id="output">（尚未產生）</pre>
+        </div>
+
+        <div class="space-top">
+          <label>伺服器回應</label>
+          <pre id="response">（伺服器回應會顯示在這裡）</pre>
+        </div>
+      </div>
+    </div>
+
+    <hr class="space-top" />
+    <p class="small">注意：伺服器可能需要 CORS / token / client 設定。</p>
   </div>
-  <table id="dataTable">
-    <thead>
-      <tr><th>姓名</th><th>服務項目</th><th>狀態</th><th>操作</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+
 <script>
-let currentTab = 'citizen';
-const data = { citizen: [], volunteer: [], admin: [] };
+// 取值工具
+function val(id){return document.getElementById(id).value.trim()}
+function setOutput(obj){document.getElementById('output').textContent = JSON.stringify(obj, null, 2)}
+function setResponse(txt){document.getElementById('response').textContent = txt}
 
-document.getElementById('tabCitizen').onclick = () => switchTab('citizen');
-document.getElementById('tabVolunteer').onclick = () => switchTab('volunteer');
-document.getElementById('tabAdmin').onclick = () => switchTab('admin');
-
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
-  document.getElementById('tab' + capitalize(tab)).classList.add('active');
-  renderTable();
+// FHIR 資源生成
+function buildOrganization(){
+  const id = val('org_id') || undefined
+  const org = {
+    resourceType: 'Organization',
+    ...(id ? {id} : {}),
+    active: true,
+    name: val('org_name') || undefined,
+    telecom: val('org_phone') ? [{system:'phone', value: val('org_phone')}] : undefined,
+    address: val('org_address') ? [{text: val('org_address')}] : undefined,
+    identifier: [{system:'http://example.org/fhir/org-id', value: val('org_id') || ''}]
+  }
+  return clean(org)
 }
 
-function capitalize(str){return str.charAt(0).toUpperCase()+str.slice(1);}
-
-function addOrUpdate() {
-  const name = document.getElementById('name').value.trim();
-  const service = document.getElementById('service').value.trim();
-  const status = document.getElementById('status').value;
-  const index = document.getElementById('editIndex').value;
-  if(!name||!service){alert('請填寫完整資料');return;}
-  if(index){data[currentTab][index] = {name, service, status};}
-  else data[currentTab].push({name, service, status});
-  resetForm();
-  renderTable();
+function buildSubOrganization(){
+  const id = val('sub_id') || undefined
+  return clean({
+    resourceType: 'Organization',
+    ...(id ? {id} : {}),
+    active: true,
+    name: val('sub_name') || undefined,
+    partOf: val('org_id') ? {reference: 'Organization/' + val('org_id')} : undefined,
+    identifier: [{system:'http://example.org/fhir/org-id', value: val('sub_id') || ''}]
+  })
 }
 
-function editData(i){
-  const d = data[currentTab][i];
-  document.getElementById('name').value = d.name;
-  document.getElementById('service').value = d.service;
-  document.getElementById('status').value = d.status;
-  document.getElementById('editIndex').value = i;
+function buildPractitioner(){
+  const id = val('pract_id') || undefined
+  return clean({
+    resourceType: 'Practitioner',
+    ...(id ? {id} : {}),
+    name: val('pract_name') ? [{text: val('pract_name')}] : undefined,
+    identifier: [{system:'http://example.org/fhir/pract-id', value: val('pract_id') || ''}]
+  })
 }
 
-function deleteData(i){
-  if(confirm('確定要刪除這筆資料嗎？')){
-    data[currentTab].splice(i,1);
-    renderTable();
+function buildPractitionerRole(){
+  const id = val('role_id') || undefined
+  return clean({
+    resourceType: 'PractitionerRole',
+    ...(id ? {id} : {}),
+    practitioner: val('pract_id') ? {reference: 'Practitioner/' + val('pract_id')} : undefined,
+    organization: val('sub_id') ? {reference: 'Organization/' + val('sub_id')} : undefined,
+    code: [{coding:[{system:'http://example.org/fhir/role', code:'manager', display:'分站管理員'}]}],
+    active: true
+  })
+}
+
+function buildPatient(){
+  const id = val('patient_id') || undefined
+  return clean({
+    resourceType: 'Patient',
+    ...(id ? {id} : {}),
+    name: val('patient_name') ? [{text: val('patient_name')}] : undefined,
+    telecom: val('patient_phone') ? [{system:'phone', value: val('patient_phone')}] : undefined,
+    birthDate: val('patient_birth') || undefined,
+    address: val('org_address') ? [{text: val('org_address')}] : undefined,
+    managingOrganization: val('sub_id') ? {reference: 'Organization/' + val('sub_id')} : undefined
+  })
+}
+
+function clean(obj){
+  if(Array.isArray(obj)) return obj.map(clean)
+  if(obj && typeof obj === 'object'){
+    const out = {}
+    for(const k in obj){
+      const v = obj[k]
+      if(v === undefined) continue
+      if(typeof v === 'object' && (Object.keys(v).length === 0 || (Array.isArray(v) && v.length === 0))) continue
+      out[k] = clean(v)
+    }
+    return out
+  }
+  return obj
+}
+
+// ✅ 改動：只產生目前選擇的資源
+document.getElementById('genJson').addEventListener('click', ()=>{
+  const type = document.getElementById('resourceType').value
+  let obj
+
+  if(type === 'Organization') obj = buildOrganization()
+  else if(type === 'Practitioner') obj = buildPractitioner()
+  else if(type === 'PractitionerRole') obj = buildPractitionerRole()
+  else if(type === 'Patient') obj = buildPatient()
+  else obj = {info:'請選擇資源類型'}
+
+  setOutput(obj)
+})
+
+// 清除欄位
+document.getElementById('clearAll').addEventListener('click', ()=>{
+  Array.from(document.querySelectorAll('input')).forEach(i=>i.value='')
+  setOutput({'info':'已清除欄位'})
+  setResponse('')
+})
+
+// HTTP helper
+async function fhirFetch(method, resourceType, id, body){
+  const base = val('fhirBase')
+  if(!base){setResponse('請先填入 FHIR Server Base URL');return}
+  const url = id ? ${base.replace(/\/$/,'')}/${resourceType}/${encodeURIComponent(id)} : ${base.replace(/\/$/,'')}/${resourceType}
+  const headers = {'Accept':'application/fhir+json', 'Content-Type':'application/fhir+json'}
+  const token = val('authToken')
+  if(token) headers['Authorization'] = token
+
+  try{
+    const opts = {method, headers}
+    if(body) opts.body = JSON.stringify(body)
+    const resp = await fetch(url, opts)
+    const text = await resp.text()
+    try{
+      const json = JSON.parse(text)
+      setResponse(JSON.stringify({status:resp.status, body: json}, null, 2))
+    }catch(e){
+      setResponse(`status:${resp.status}\n${text}`)
+    }
+  }catch(err){
+    setResponse('Fetch error: ' + err.message)
   }
 }
 
-function resetForm(){
-  document.getElementById('name').value='';
-  document.getElementById('service').value='';
-  document.getElementById('status').value='active';
-  document.getElementById('editIndex').value='';
-}
+// CRUD
+document.getElementById('createBtn').addEventListener('click', async ()=>{
+  const type = document.getElementById('resourceType').value
+  let body
+  if(type === 'Organization') body = buildOrganization()
+  else if(type === 'Practitioner') body = buildPractitioner()
+  else if(type === 'PractitionerRole') body = buildPractitionerRole()
+  else if(type === 'Patient') body = buildPatient()
+  setOutput(body)
+  await fhirFetch('POST', type, null, body)
+})
 
-function renderTable(){
-  const tbody = document.querySelector('#dataTable tbody');
-  tbody.innerHTML='';
-  data[currentTab].forEach((d,i)=>{
-    const row = `<tr><td>${d.name}</td><td>${d.service}</td><td>${d.status}</td>
-      <td><button onclick="editData(${i})">編輯</button> <button onclick="deleteData(${i})">刪除</button></td></tr>`;
-    tbody.innerHTML += row;
-  });
-}
-
-function exportCSV(){
-  const items = data[currentTab];
-  if(items.length===0){alert('目前分頁沒有資料可匯出');return;}
-  const headers = Object.keys(items[0]);
-  const csvRows = [headers.join(',')];
-  for(const item of items){csvRows.push(headers.map(h=>item[h]).join(','));}
-  const csvData = csvRows.join('\\n');
-  const blob = new Blob([csvData], {type: 'text/csv'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = currentTab + '_data.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-renderTable();
-</script>
-</body>
-</html>
+document.getElementById('readBtn').addEventListener('click', async ()=>{
+  const type = document.getElementById('resourceType').value
+  const id = val('target_id')
+  if(!id){setResponse('請提供 target id');return}
+  await fhirFetch('GET', type,

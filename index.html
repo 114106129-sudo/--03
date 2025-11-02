@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社區端系統架構 - CRUD 互動示範</title>
+<style>
+body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; }
+header { background-color: #005eb8; color: white; padding: 10px; text-align: center; }
+nav { display: flex; justify-content: center; background-color: #e0e0e0; }
+nav button { margin: 5px; padding: 10px 20px; border: none; cursor: pointer; background-color: #ddd; border-radius: 5px; }
+nav button.active { background-color: #005eb8; color: white; }
+.container { padding: 20px; }
+input, select { margin: 5px; padding: 5px; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+button { border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>社區端系統架構 - CRUD 互動示範</h1>
+</header>
+<nav>
+  <button id="tabCitizen" class="active">民眾服務請求系統</button>
+  <button id="tabVolunteer">志工管理系統</button>
+  <button id="tabAdmin">社區管理系統</button>
+</nav>
+<div class="container">
+  <div id="formArea">
+    <h2 id="formTitle">新增資料</h2>
+    <input type="hidden" id="editIndex">
+    <input id="name" placeholder="姓名">
+    <input id="service" placeholder="服務項目">
+    <select id="status">
+      <option value="active">active</option>
+      <option value="completed">completed</option>
+    </select>
+    <button onclick="addOrUpdate()">儲存</button>
+    <button onclick="resetForm()">清除</button>
+    <button onclick="exportCSV()">匯出 CSV</button>
+  </div>
+  <table id="dataTable">
+    <thead>
+      <tr><th>姓名</th><th>服務項目</th><th>狀態</th><th>操作</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+<script>
+let currentTab = 'citizen';
+const data = { citizen: [], volunteer: [], admin: [] };
+
+document.getElementById('tabCitizen').onclick = () => switchTab('citizen');
+document.getElementById('tabVolunteer').onclick = () => switchTab('volunteer');
+document.getElementById('tabAdmin').onclick = () => switchTab('admin');
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('tab' + capitalize(tab)).classList.add('active');
+  renderTable();
+}
+
+function capitalize(str){return str.charAt(0).toUpperCase()+str.slice(1);}
+
+function addOrUpdate() {
+  const name = document.getElementById('name').value.trim();
+  const service = document.getElementById('service').value.trim();
+  const status = document.getElementById('status').value;
+  const index = document.getElementById('editIndex').value;
+  if(!name||!service){alert('請填寫完整資料');return;}
+  if(index){data[currentTab][index] = {name, service, status};}
+  else data[currentTab].push({name, service, status});
+  resetForm();
+  renderTable();
+}
+
+function editData(i){
+  const d = data[currentTab][i];
+  document.getElementById('name').value = d.name;
+  document.getElementById('service').value = d.service;
+  document.getElementById('status').value = d.status;
+  document.getElementById('editIndex').value = i;
+}
+
+function deleteData(i){
+  if(confirm('確定要刪除這筆資料嗎？')){
+    data[currentTab].splice(i,1);
+    renderTable();
+  }
+}
+
+function resetForm(){
+  document.getElementById('name').value='';
+  document.getElementById('service').value='';
+  document.getElementById('status').value='active';
+  document.getElementById('editIndex').value='';
+}
+
+function renderTable(){
+  const tbody = document.querySelector('#dataTable tbody');
+  tbody.innerHTML='';
+  data[currentTab].forEach((d,i)=>{
+    const row = `<tr><td>${d.name}</td><td>${d.service}</td><td>${d.status}</td>
+      <td><button onclick="editData(${i})">編輯</button> <button onclick="deleteData(${i})">刪除</button></td></tr>`;
+    tbody.innerHTML += row;
+  });
+}
+
+function exportCSV(){
+  const items = data[currentTab];
+  if(items.length===0){alert('目前分頁沒有資料可匯出');return;}
+  const headers = Object.keys(items[0]);
+  const csvRows = [headers.join(',')];
+  for(const item of items){csvRows.push(headers.map(h=>item[h]).join(','));}
+  const csvData = csvRows.join('\\n');
+  const blob = new Blob([csvData], {type: 'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentTab + '_data.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+renderTable();
+</script>
+</body>
+</html>
